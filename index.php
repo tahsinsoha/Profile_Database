@@ -12,6 +12,8 @@ session_start();
 
 <body>
     <?php
+       $stmt = $pdo->query("SELECT * FROM profile");
+       $profiles = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!isset($_SESSION['user_id'])) {
         echo ('<a href="login.php">Please log in</a>');
     }

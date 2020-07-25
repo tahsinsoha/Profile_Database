@@ -29,4 +29,16 @@ echo('<h2>Summary:</h2>');
 echo ($r."\n");
 echo("\n");
 
+
+$pt = $pdo->prepare('SELECT * FROM Position WHERE profile_id=:pid');
+$pt->execute(array(':pid' => $_REQUEST['profile_id']));
+
+
+echo('<h2>Position:</h2>'); 
+while($x = $pt->fetch(PDO::FETCH_ASSOC)){
+    echo ($x['year']);
+    echo(":");
+    echo ($x['description']);
+    echo('\n');
+}
 ?>
