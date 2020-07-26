@@ -39,6 +39,21 @@ while($x = $pt->fetch(PDO::FETCH_ASSOC)){
     echo ($x['year']);
     echo(":");
     echo ($x['description']);
-    echo('\n');
+   // echo('\n');
 }
+
+$stmt = $pdo->prepare("SELECT * FROM Education left join Institution on Education.institution_id=Institution.Institution_id where profile_id = :prof order by rank");
+$stmt->execute(array(":prof" => $_GET['profile_id']));
+
+
+echo('<h2>Education:</h2>'); 
+while($x = $stmt->fetch(PDO::FETCH_ASSOC)){
+    echo ($x['year']);
+    echo(":");
+    echo ($x['name']);
+  //  echo('\n');
+}
+
+
+
 ?>

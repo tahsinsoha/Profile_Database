@@ -33,8 +33,9 @@ if (
     && isset($_POST['email']) && isset($_POST['headline']) && isset($_POST['summary'])
 ) {
     $msg = validatePos();
+    $msg2 = validateEdu();
     if (empty($_POST["first_name"]) || empty($_POST["last_name"]) || empty($_POST["email"]) || empty($_POST["headline"])  || empty($_POST['summary'])) {
-        $_SESSION["error"] = "All fields are required";
+        $_SESSION["error"] = "All values are required";
         header("Location: edit.php?profile_id=" . urlencode($_REQUEST['profile_id']));
         return;
     } elseif (strpos($_POST["email"], '@') == false) {
@@ -43,6 +44,10 @@ if (
         return;
     } elseif (is_string($msg)) {
         $_SESSION["error"] = $msg;
+        header("Location: edit.php?profile_id=" . urlencode($_REQUEST['profile_id']));
+        return;
+    } elseif (is_string($msg2)) {
+        $_SESSION["error"] = $msg2;
         header("Location: edit.php?profile_id=" . urlencode($_REQUEST['profile_id']));
         return;
     } else {
@@ -84,6 +89,10 @@ if (
             $rank++;
         }
 
+        $stmt = $pdo->prepare('DELETE FROM Education WHERE profile_id=:pid');
+        $stmt->execute(array(':pid' => $_REQUEST['profile_id']));
+        insertEdu($pdo,  $_REQUEST['profile_id']);
+
         $_SESSION["success"] = "Profile updated";
         header('Location: index.php');
         return;
@@ -103,10 +112,10 @@ $q = htmlentities($row['headline']);
 $r = htmlentities($row['summary']);
 $profile_id = $row['profile_id'];
 
-$positions = loadPos($pdo, $_REQUEST['profile_id']);
+$positions = @loadPos($pdo, $_REQUEST['profile_id']);
+$schools = @loadEdu($pdo, $_REQUEST['profile_id']);
 
 ?>
-
 
 
 <!DOCTYPE html>
@@ -120,7 +129,11 @@ $positions = loadPos($pdo, $_REQUEST['profile_id']);
 
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css" integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
 
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css" integrity="sha384-xewr6kSkq3dBbEtB6Z/3oFZmknWn7nHqhLVLrYgzEFRbU/DHSxW7K3B44yWUN60D" crossorigin="anonymous">
+
     <script src="https://code.jquery.com/jquery-3.2.1.js" integrity="sha256-DZAnKJ/6XZ9si04Hgrsxu/8s717jcIzLy3oi35EouyE=" crossorigin="anonymous"></script>
+
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js" integrity="sha256-T0Vest3yCU7pafRw9r+settMBX6JkKN06dqBnpQ8d30=" crossorigin="anonymous"></script>
 
 </head>
 
@@ -142,6 +155,30 @@ $positions = loadPos($pdo, $_REQUEST['profile_id']);
 
 
             <?php
+            $edu = 0;
+            echo ('<p>Education: <input type= "submit" id="addEdu" value="+">' . "\n");
+            echo ('<div id="edu_fields">' . "\n");
+            if (count($schools) > 0) {
+                foreach ($schools as $school) {
+
+                    $edu++;
+                    echo ('<div id="edu' . $edu . '">' . "\n");
+                    echo ('<p>Year: <input type= "text" name="edu_year' . $edu . '"value="' . $school['year'] . '"/>');
+                    // echo ('value="' . $school['year'] . '"/>' . "\n");
+                    echo ('<input type="button" value="-"');
+                    echo ('onclick="$(\'#edu' . $edu . '\').remove(); return false;">' . "\n");
+                    //  echo ("<\p>\n");
+                    // echo ('<textarea name="desc' . $pos . '"rows="8" cols="80">' . "\n");
+                    echo ('<p>School: <input type= "text" size="80" name="edu_school' . $edu . '" class="school"value="' . htmlentities($school['name']) . '"/>');
+                    // echo (htmlentities($position['description']) . "\n");
+
+                    echo ("\n</div>\n");
+                }
+            }
+            echo ("</div></p>\n");
+
+
+
             $pos = 0;
             echo ('<p>Position: <input type= "submit" id="addPos" value="+">' . "\n");
             echo ('<div id="position_fields">' . "\n");
@@ -167,14 +204,14 @@ $positions = loadPos($pdo, $_REQUEST['profile_id']);
                 <input type="submit" name="cancel" value="Cancel">
             </p>
         </form>
-        <script src="js/jquery-1.10.2.js"></script>
-        <script src="js/jquery-ui-1.11.4.js"></script>
         <script>
-            countPos = 1;
+            countPos = 0;
+            countEdu = 0;
 
             // http://stackoverflow.com/questions/17650776/add-remove-html-inside-div-using-javascript
             $(document).ready(function() {
                 window.console && console.log('Document ready called');
+
                 $('#addPos').click(function(event) {
                     // http://api.jquery.com/event.preventdefault/
                     event.preventDefault();
@@ -184,16 +221,51 @@ $positions = loadPos($pdo, $_REQUEST['profile_id']);
                     }
                     countPos++;
                     window.console && console.log("Adding position " + countPos);
+
                     $('#position_fields').append(
                         '<div id="position' + countPos + '"> \
             <p>Year: <input type="text" name="year' + countPos + '" value="" /> \
             <input type="button" value="-" \
-            onclick="$(\'#position' + countPos + '\').remove();return false;"></p> \
+                onclick="$(\'#position' + countPos + '\').remove();return false;"></p> \
             <textarea name="desc' + countPos + '" rows="8" cols="80"></textarea>\
             </div>');
                 });
+
+                $('#addEdu').click(function(event) {
+                    event.preventDefault();
+                    if (countEdu >= 9) {
+                        alert("Maximum of nine education entries exceeded");
+                        return;
+                    }
+                    countEdu++;
+                    window.console && console.log("Adding education " + countEdu);
+
+                    // Grab some HTML with hot spots and insert into the DOM
+                    var source = $("#edu-template").html();
+                    $('#edu_fields').append(source.replace(/@COUNT@/g, countEdu));
+
+                    // Add the even handler to the new ones
+                    $('.school').autocomplete({
+                        source: "school.php"
+                    });
+
+                });
+
+                $('.school').autocomplete({
+                    source: "school.php"
+                });
+
             });
         </script>
+        <!-- HTML with Substitution hot spots -->
+        <script id="edu-template" type="text">
+            <div id="edu@COUNT@">
+    <p>Year: <input type="text" name="edu_year@COUNT@" value="" />
+    <input type="button" value="-" onclick="$('#edu@COUNT@').remove();return false;"><br>
+    <p>School: <input type="text" size="80" name="edu_school@COUNT@" class="school" value="" />
+    </p>
+  </div>
+</script>
     </div>
 </body>
 
